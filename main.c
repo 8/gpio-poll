@@ -9,13 +9,19 @@
 #include <stdlib.h>  /* for atoi() */
 #include <errno.h>
 
+#define MAX_GPIO_COUNT 16
+
 int gpio_base = 55;
-int gpio_count = 16;
+int gpio_count = MAX_GPIO_COUNT;
+int gpio_states[MAX_GPIO_COUNT];
+
+#define MAX_FILENAME_LENGTH 255
+char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
 
 static void print_usage()
 {
   printf("gpio-poll tool by mdk\n");
-  printf("example usage: ./gpio-poll\n");
+  printf("example usage: ./gpio-poll --base=55 --count=16\n");
   printf("\n");
 }
 
@@ -51,6 +57,9 @@ static void handle_parameters(int argc, char** argv)
   } while (c != -1);
 }
 
+/* polls the specified gpio and sets the 'value'
+   returns 1 if successful, otherwise 0
+   example usage: poll_gpio("/sys/class/gpio/gpio55/value", &value); */
 static int poll_gpio(const char *path, int* value)
 {
   FILE *file;
@@ -64,6 +73,7 @@ static int poll_gpio(const char *path, int* value)
     /* try to read 1 character */
     if (ret = fread(buffer, 1, 1, file))
     {
+      /* ascii 48 -> 0, 49 -> 1 */
       if (buffer[0] == 48)
         *value = 0;
       else if (buffer[0] == 49)
@@ -81,41 +91,55 @@ static int poll_gpio(const char *path, int* value)
   return ret;
 }
 
-
-static void poll_gpios(int basegpio, int gpiocount)
+static void init_gpios(int basegpio, int gpiocount, char filenames[][MAX_FILENAME_LENGTH])
 {
-  int states[16];
-  int value;
-  char filename[16][255];
   int i;
-
-  //if (poll_gpio("/sys/class/gpio/gpio55/value", &value))
-  //  printf("value: %i\n", value);
-  //else
-  //  printf("failed!\n");
-
-  if (gpiocount > 16)
-    gpiocount = 16;
-
   /* initialize the gpio names */
-  memset(filename, 0, 255*gpiocount);
+  memset(filenames, 0, 255*gpiocount);
   for (i = 0; i < gpiocount; i++)
-    snprintf(filename[i], 254, "/sys/class/gpio/gpio%i/value", i+basegpio);
+    snprintf(filenames[i], 254, "/sys/class/gpio/gpio%i/value", i+basegpio);
 
   /* print the gpio names */
   printf("polling the following gpios:\n");
   for (i = 0; i < gpiocount; i++)
-    printf("%s\n", filename[i]);
+    printf("%s\n", filenames[i]);
   printf("\n");
+}
+
+static void poll_gpios(int gpiocount, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
+{
+  int value;
+  int i;
+
+  if (gpiocount > MAX_GPIO_COUNT)
+    gpiocount = MAX_GPIO_COUNT;
 
   /* now poll them */
   for (i = 0; i < gpiocount; i++)
   {
-    if (poll_gpio(filename[i], &value))
-      printf("gpio: %s, value: %i\n", filename[i], value);
+    if (poll_gpio(filenames[i], &value))
+    {
+      //printf("gpio: %s, value: %i\n", filenames[i], value);
+      states[i] = value;
+    }
     else
-      printf("gpio: %s, failed!\n", filename[i]);
+    {
+      states[i] = -1;
+      //printf("gpio: %s, failed!\n", filenames[i]);
+    }
   }
+}
+
+static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
+{
+  int i;
+
+  for (i = 0; i < count; i++)
+    printf("\t%i", base + i);
+  printf("\n");
+  for (i = 0; i < count; i++)
+    printf("\t%i", states[i]);
+  printf("\n");
 }
 
 /* main entry point */
@@ -128,7 +152,13 @@ int main(int argc, char *argv[])
   /* handle the params */
   handle_parameters(argc, argv);
 
+  /* initialize the gpio file names */
+  init_gpios(gpio_base, gpio_count, gpio_filenames);
+
   /* read the gpios */
-  poll_gpios(gpio_base, gpio_count);
+  poll_gpios(gpio_count, gpio_states, gpio_filenames);
+
+  /* print the states of the gpios */
+  print_gpios(gpio_base, gpio_count, gpio_states);
 }
 
