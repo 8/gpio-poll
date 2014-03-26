@@ -18,11 +18,15 @@ int gpio_states[MAX_GPIO_COUNT];
 #define MAX_FILENAME_LENGTH 255
 char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
 
-static void print_usage()
+static void print_info()
 {
   printf("gpio-poll tool by mdk\n");
-  printf("example usage: ./gpio-poll --base=55 --count=16\n");
   printf("\n");
+}
+
+static void print_usage()
+{
+  printf("example usage: ./gpio-poll --base=55 --count=16\n");
 }
 
 static void handle_parameters(int argc, char** argv)
@@ -32,6 +36,7 @@ static void handle_parameters(int argc, char** argv)
   struct option long_options[] = {
     { "base",  required_argument, 0, 0 },
     { "count", required_argument, 0, 0 },
+    { "help", no_argument, 0, 0},
     { 0,       0,             0, 0 }
   };
 
@@ -51,6 +56,7 @@ static void handle_parameters(int argc, char** argv)
       {
         case 0: gpio_base = atoi(optarg); break;
         case 1: gpio_count = atoi(optarg); break;
+        case 2: print_usage(); exit(0); break;
       }
     }
 
@@ -135,10 +141,10 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
   int i;
 
   for (i = 0; i < count; i++)
-    printf("\t%i", base + i);
+    printf("  %i", base + i);
   printf("\n");
   for (i = 0; i < count; i++)
-    printf("\t%i", states[i]);
+    printf("  %2d", states[i]);
   printf("\n");
 }
 
@@ -147,9 +153,9 @@ int main(int argc, char *argv[])
 {
   int value;
 
-  print_usage();
+  print_info();
   
-  /* handle the params */
+  /* parse the cmdline arguments */
   handle_parameters(argc, argv);
 
   /* initialize the gpio file names */
