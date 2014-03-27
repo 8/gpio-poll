@@ -68,7 +68,7 @@ static void handle_parameters(int argc, char** argv)
 /* polls the specified gpio and sets the 'value'
    returns 1 if successful, otherwise 0
    example usage: poll_gpio("/sys/class/gpio/gpio55/value", &value); */
-static int poll_gpio(const char *path, int* value)
+static int read_gpio(const char *path, int* value)
 {
   FILE *file;
   char buffer[1];
@@ -99,6 +99,7 @@ static int poll_gpio(const char *path, int* value)
   return ret;
 }
 
+/* initializes the filenames based supplied values */
 static void init_gpios(int basegpio, int gpiocount, char filenames[][MAX_FILENAME_LENGTH])
 {
   int i;
@@ -114,7 +115,9 @@ static void init_gpios(int basegpio, int gpiocount, char filenames[][MAX_FILENAM
   printf("\n");
 }
 
-static int poll_gpios(int gpiocount, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
+/* reads the state from the gpios and updates their states 
+   returns the number of state changes */
+static int read_gpios(int gpiocount, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
 {
   int value;
   int i;
@@ -125,22 +128,23 @@ static int poll_gpios(int gpiocount, int states[MAX_GPIO_COUNT], char filenames[
 
   for (i = 0; i < gpiocount; i++)
   {
-    if (poll_gpio(filenames[i], &value))
+    if (read_gpio(filenames[i], &value))
     {
       if (states[i] != value)
-        value_changed = 1;
+        value_changed++;
       states[i] = value;
     }
     else
     {
       if (states[i] != -1)
-        value_changed = 1;
+        value_changed++;
       states[i] = -1;
     }
   }
   return value_changed;
 }
 
+/* prints the gpios and their states */
 static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
 {
   int i;
@@ -167,7 +171,7 @@ int main(int argc, char *argv[])
   init_gpios(gpio_base, gpio_count, gpio_filenames);
 
   /* read the gpios */
-  poll_gpios(gpio_count, gpio_states, gpio_filenames);
+  read_gpios(gpio_count, gpio_states, gpio_filenames);
 
   /* print the states of the gpios */
   print_gpios(gpio_base, gpio_count, gpio_states);
@@ -177,7 +181,7 @@ int main(int argc, char *argv[])
     count++;
 
     /* keep polling the states of the gpios and print them if they change */
-    if (poll_gpios(gpio_count, gpio_states, gpio_filenames))
+    if (read_gpios(gpio_count, gpio_states, gpio_filenames))
     {
       printf("%i * %i gpios polled before change occurred\n", count, gpio_count);
       count = 0;
