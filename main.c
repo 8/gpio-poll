@@ -161,7 +161,7 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
   int i;
   printf("gpios:  ");
   for (i = 0; i < count; i++)
-    printf("  %i", base + i);
+    printf("  %2d", base + i);
   printf("\nvalues: ");
   for (i = 0; i < count; i++)
     printf("  %2d", states[i]);
