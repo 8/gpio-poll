@@ -180,7 +180,7 @@ static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT
     if (read_gpios(count, states, filenames))
     {
       printf("%i * %i gpios polled before change occurred\n", readcount, count);
-      count = 0;
+      readcount = 0;
       print_gpios(base, count, states);
     }
   }
