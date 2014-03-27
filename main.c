@@ -28,12 +28,16 @@ struct settings_t {
 static void print_info()
 {
   printf("gpio-poll tool by mdk\n");
+  printf("use 'gpio-poll --help' for additional information\n");
   printf("\n");
 }
 
 static void print_usage()
 {
-  printf("example usage: ./gpio-poll --base=55 --count=16 --loop --poll --timeout\n");
+  printf("example usage: ./gpio-poll --base=55 --count=16 --poll --timeout=1000\n");
+  printf("\n");
+  printf("if you are using --poll remember to configure the interrupt edges for the gpio\n");
+  printf("e.g.: echo both > /sys/class/gpio/gpio8/edge\n");
 }
 
 static void handle_parameters(int argc, char** argv, settings_t *settings)
@@ -244,12 +248,14 @@ static void enter_poll_gpios(int base, int count, int timeout, int states[MAX_GP
 {
   int ret;
 
-  printf("polling gpios...\n");
+  printf("waiting for interrupt on the gpios...\n");
   ret = poll_gpios(count, filenames, timeout);
   if (ret == -1)
     printf("timeout occurred\n");
   else if (ret == -2)
     printf("error occurred\n");
+  else if (ret == -3)
+    printf("unknown reason");
   else
   {
     printf("gpio %i changed\n", base + ret);
