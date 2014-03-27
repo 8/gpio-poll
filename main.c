@@ -2,8 +2,6 @@
 
 #include <stdio.h>
 #include <iostream>
-#include <termios.h> // needed for implementing set_inferface_attribs()
-#include <fcntl.h>   /* needed for O_RDWR, O_NOCTTY, O_NDELAY */
 #include <string.h>
 #include <getopt.h>  /* for getopt_long*/
 #include <stdlib.h>  /* for atoi() */
