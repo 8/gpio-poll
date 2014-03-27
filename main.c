@@ -280,7 +280,9 @@ int main(int argc, char *argv[])
   read_gpios(settings.gpio_count, settings.gpio_states, settings.gpio_filenames);
 
   /* print the states of the gpios */
+  printf("initial values:\n");
   print_gpios(settings.gpio_base, settings.gpio_count, settings.gpio_states);
+  printf("\n");
 
   /* keep reading gpios cpu intensive in a tight loop */
   if (settings.loop)
