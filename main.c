@@ -27,7 +27,7 @@ static void print_info()
 
 static void print_usage()
 {
-  printf("example usage: ./gpio-poll --base=55 --count=16\n");
+  printf("example usage: ./gpio-poll --base=55 --count=16 --loop\n");
 }
 
 static void handle_parameters(int argc, char** argv)
@@ -157,6 +157,7 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
     printf("  %2d", states[i]);
   printf("\n");
 }
+
 
 /* main entry point */
 int main(int argc, char *argv[])
