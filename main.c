@@ -193,11 +193,10 @@ static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT
 static int poll_gpios(int count, char filenames[][MAX_FILENAME_LENGTH], int timeout)
 {
   int ret, i, value;
+  char buffer[1];
 
   /* the file descriptors we're waiting on */
   struct pollfd fds[MAX_GPIO_COUNT];
-
-  char buffer[255];
 
   for (i = 0; i < count; i++)
   {
@@ -205,11 +204,9 @@ static int poll_gpios(int count, char filenames[][MAX_FILENAME_LENGTH], int time
     fds[i].fd = open(filenames[i], O_RDONLY);
     fds[i].events = POLLPRI | POLLERR; /* poll high priority data without blocking as specified in gpio.txt */
 
+    /* clear the current data so that poll returns only on new data, not on the currently available one */
     if (fds[i].fd != -1)
-    {
-      /* clear the current data so that poll returns only on new data */
-      read(fds[i].fd, buffer, 254);
-    }
+      read(fds[i].fd, buffer, sizeof(buffer));
   }
 
   value = poll(fds, count, timeout);
