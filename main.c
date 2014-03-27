@@ -13,11 +13,13 @@
 #define MAX_GPIO_COUNT 16
 #define MAX_FILENAME_LENGTH 255
 
-int gpio_base = 55;
-int gpio_count = MAX_GPIO_COUNT;
-int gpio_states[MAX_GPIO_COUNT];
-char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
-int keep_looping = 0;
+struct settings_t {
+  int gpio_base;
+  int gpio_count;
+  int gpio_states[MAX_GPIO_COUNT];
+  char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
+  int keep_looping;
+};
 
 static void print_info()
 {
@@ -30,7 +32,7 @@ static void print_usage()
   printf("example usage: ./gpio-poll --base=55 --count=16 --loop\n");
 }
 
-static void handle_parameters(int argc, char** argv)
+static void handle_parameters(int argc, char** argv, settings_t *settings)
 {
   int c = -1;
 
@@ -56,10 +58,10 @@ static void handle_parameters(int argc, char** argv)
     {
       switch (option_index)
       {
-        case 0: gpio_base = atoi(optarg); break;
-        case 1: gpio_count = atoi(optarg); break;
+        case 0: settings->gpio_base = atoi(optarg); break;
+        case 1: settings->gpio_count = atoi(optarg); break;
         case 2: print_usage(); exit(0); break;
-        case 3: keep_looping = 1; break;
+        case 3: settings->keep_looping = 1; break;
       }
     }
 
@@ -162,7 +164,7 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
 static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
 {
   int readcount = 0;
-  while (keep_looping)
+  while (1)
   {
     readcount++;
 
@@ -179,23 +181,28 @@ static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT
 /* main entry point */
 int main(int argc, char *argv[])
 {
+  struct settings_t settings;
+  settings.gpio_base = 55;
+  settings.gpio_count = MAX_GPIO_COUNT;
+  settings.keep_looping = 0;
+
   print_info();
   
   /* parse the cmdline arguments */
-  handle_parameters(argc, argv);
+  handle_parameters(argc, argv, &settings);
 
   /* initialize the gpio file names */
-  init_gpios(gpio_base, gpio_count, gpio_filenames);
+  init_gpios(settings.gpio_base, settings.gpio_count, settings.gpio_filenames);
 
   /* read the gpios */
-  read_gpios(gpio_count, gpio_states, gpio_filenames);
+  read_gpios(settings.gpio_count, settings.gpio_states, settings.gpio_filenames);
 
   /* print the states of the gpios */
-  print_gpios(gpio_base, gpio_count, gpio_states);
+  print_gpios(settings.gpio_base, settings.gpio_count, settings.gpio_states);
 
   /* keep reading gpios cpu intensive in a tight loop */
-  if (keep_looping)
-    enter_read_gpios_loop(gpio_base, gpio_count, gpio_states, gpio_filenames);
+  if (settings.keep_looping)
+    enter_read_gpios_loop(settings.gpio_base, settings.gpio_count, settings.gpio_states, settings.gpio_filenames);
 
 }
 
