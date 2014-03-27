@@ -9,6 +9,8 @@
 #include <getopt.h>  /* for getopt_long*/
 #include <stdlib.h>  /* for atoi() */
 #include <errno.h>
+#include <poll.h>   /* for poll() */
+#include <fcntl.h>  /* used for O_RDONLY */
 
 #define MAX_GPIO_COUNT 16
 #define MAX_FILENAME_LENGTH 255
@@ -18,7 +20,9 @@ struct settings_t {
   int gpio_count;
   int gpio_states[MAX_GPIO_COUNT];
   char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
-  int keep_looping;
+  int loop;
+  int poll;
+  int poll_timeout;
 };
 
 static void print_info()
@@ -29,7 +33,7 @@ static void print_info()
 
 static void print_usage()
 {
-  printf("example usage: ./gpio-poll --base=55 --count=16 --loop\n");
+  printf("example usage: ./gpio-poll --base=55 --count=16 --loop --poll --timeout\n");
 }
 
 static void handle_parameters(int argc, char** argv, settings_t *settings)
@@ -39,8 +43,10 @@ static void handle_parameters(int argc, char** argv, settings_t *settings)
   struct option long_options[] = {
     { "base",  required_argument, 0, 0 },
     { "count", required_argument, 0, 0 },
-    { "help", no_argument, 0, 0},
-    { "loop", no_argument, 0, 0},
+    { "help", no_argument, 0, 0 },
+    { "loop", no_argument, 0, 0 },
+    { "poll", no_argument, 0, 0 },
+    { "timeout", required_argument, 0, 0 },
     { 0,       0,             0, 0 }
   };
 
@@ -61,7 +67,9 @@ static void handle_parameters(int argc, char** argv, settings_t *settings)
         case 0: settings->gpio_base = atoi(optarg); break;
         case 1: settings->gpio_count = atoi(optarg); break;
         case 2: print_usage(); exit(0); break;
-        case 3: settings->keep_looping = 1; break;
+        case 3: settings->loop = 1; break;
+        case 4: settings->poll = 1; break;
+        case 5: settings->poll_timeout = atoi(optarg); break;
       }
     }
 
@@ -178,13 +186,87 @@ static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT
   }
 }
 
+/* waits for changes in the supplied gpios by using the poll() function
+   works only for gpios that support interrupts but does not put a load on the cpu
+   timeout: in ms, 0 returns immediately, -1 blocks forever
+   returns: the index of the changed gpio or -1 if timeout occurrs or -2 if an error occurrs */
+static int poll_gpios(int count, char filenames[][MAX_FILENAME_LENGTH], int timeout)
+{
+  int ret, i, value;
+
+  /* the file descriptors we're waiting on */
+  struct pollfd fds[MAX_GPIO_COUNT];
+
+  for (i = 0; i < count; i++)
+  {
+    /* open the file descriptors */
+    fds[i].fd = open(filenames[i], O_RDONLY);
+    fds[i].events = POLLPRI; /* poll high priority data without blocking as specified in gpio.txt */
+  }
+
+  value = poll(fds, count, timeout);
+
+  /* check if a timeout occurred */
+  if (value == 0)
+    ret = -1; 
+  /* check if an error occurred */
+  else if(value == -1)
+    ret = -2;
+  else /* value specifies the number of events that occurred */
+  {
+    /* evaluate which gpio has changed */
+    for (i = 0; i < count; i++)
+    {
+      /* can high priority data be read without blocking? */
+      if (fds[i].revents && POLLPRI)
+      {
+        ret = i;
+        break;
+      }
+    }
+  }
+
+  /* close all file descriptors */
+  for (i = 0; i < count; i++)
+    if (fds[i].fd != -1)
+      close(fds[i].fd);
+
+  return ret;
+}
+
+static void enter_poll_gpios(int base, int count, int timeout, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
+{
+  int ret;
+
+  printf("polling gpios...\n");
+  ret = poll_gpios(count, filenames, timeout);
+  if (ret == -1)
+    printf("timeout occurred\n");
+  else if (ret == -2)
+    printf("error occurred\n");
+  else
+  {
+    printf("gpio %i changed\n", base + ret);
+
+    /* update and show the new gpio states */
+    read_gpios(count, states, filenames);
+    print_gpios(base, count, states);
+  }
+
+}
+
 /* main entry point */
 int main(int argc, char *argv[])
 {
+  int ret;
+
+  /* init the default settings */
   struct settings_t settings;
-  settings.gpio_base = 55;
+  settings.gpio_base  = 55;
   settings.gpio_count = MAX_GPIO_COUNT;
-  settings.keep_looping = 0;
+  settings.loop       = 0;
+  settings.poll       = 0;
+  settings.poll_timeout = -1;
 
   print_info();
   
@@ -201,8 +283,11 @@ int main(int argc, char *argv[])
   print_gpios(settings.gpio_base, settings.gpio_count, settings.gpio_states);
 
   /* keep reading gpios cpu intensive in a tight loop */
-  if (settings.keep_looping)
+  if (settings.loop)
     enter_read_gpios_loop(settings.gpio_base, settings.gpio_count, settings.gpio_states, settings.gpio_filenames);
 
+  /* poll the gpios once */
+  if (settings.poll)
+    enter_poll_gpios(settings.gpio_base, settings.gpio_count, settings.poll_timeout, settings.gpio_states, settings.gpio_filenames);
 }
 
