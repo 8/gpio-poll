@@ -158,6 +158,7 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
   printf("\n");
 }
 
+/* function that keeps reading the gpios in a tight loop and prints detected changes */
 static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
 {
   int readcount = 0;
@@ -192,6 +193,7 @@ int main(int argc, char *argv[])
   /* print the states of the gpios */
   print_gpios(gpio_base, gpio_count, gpio_states);
 
+  /* keep reading gpios cpu intensive in a tight loop */
   if (keep_looping)
     enter_read_gpios_loop(gpio_base, gpio_count, gpio_states, gpio_filenames);
 
