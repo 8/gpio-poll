@@ -197,11 +197,19 @@ static int poll_gpios(int count, char filenames[][MAX_FILENAME_LENGTH], int time
   /* the file descriptors we're waiting on */
   struct pollfd fds[MAX_GPIO_COUNT];
 
+  char buffer[255];
+
   for (i = 0; i < count; i++)
   {
     /* open the file descriptors */
     fds[i].fd = open(filenames[i], O_RDONLY);
-    fds[i].events = POLLPRI; /* poll high priority data without blocking as specified in gpio.txt */
+    fds[i].events = POLLPRI | POLLERR; /* poll high priority data without blocking as specified in gpio.txt */
+
+    if (fds[i].fd != -1)
+    {
+      /* clear the current data so that poll returns only on new data */
+      read(fds[i].fd, buffer, 254);
+    }
   }
 
   value = poll(fds, count, timeout);
@@ -214,11 +222,12 @@ static int poll_gpios(int count, char filenames[][MAX_FILENAME_LENGTH], int time
     ret = -2;
   else /* value specifies the number of events that occurred */
   {
+    ret = -3;
     /* evaluate which gpio has changed */
     for (i = 0; i < count; i++)
     {
       /* can high priority data be read without blocking? */
-      if (fds[i].revents && POLLPRI)
+      if (fds[i].revents & POLLPRI)
       {
         ret = i;
         break;
