@@ -158,12 +158,26 @@ static void print_gpios(int base, int count, int states[MAX_GPIO_COUNT])
   printf("\n");
 }
 
+static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
+{
+  int readcount = 0;
+  while (keep_looping)
+  {
+    readcount++;
+
+    /* keep polling the states of the gpios and print them if they change */
+    if (read_gpios(count, states, filenames))
+    {
+      printf("%i * %i gpios polled before change occurred\n", readcount, count);
+      count = 0;
+      print_gpios(base, count, states);
+    }
+  }
+}
 
 /* main entry point */
 int main(int argc, char *argv[])
 {
-  int count = 0;
-
   print_info();
   
   /* parse the cmdline arguments */
@@ -178,18 +192,8 @@ int main(int argc, char *argv[])
   /* print the states of the gpios */
   print_gpios(gpio_base, gpio_count, gpio_states);
 
-  while (keep_looping)
-  {
-    count++;
-
-    /* keep polling the states of the gpios and print them if they change */
-    if (read_gpios(gpio_count, gpio_states, gpio_filenames))
-    {
-      printf("%i * %i gpios polled before change occurred\n", count, gpio_count);
-      count = 0;
-      print_gpios(gpio_base, gpio_count, gpio_states);
-    }
-  }
+  if (keep_looping)
+    enter_read_gpios_loop(gpio_base, gpio_count, gpio_states, gpio_filenames);
 
 }
 
