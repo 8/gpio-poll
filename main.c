@@ -1,5 +1,8 @@
-/* test tool to send data to tty devices */
-
+/* 
+  gpio-poll
+  test tool to poll for gpio changes
+  written by mdk
+*/
 #include <stdio.h>
 #include <iostream>
 #include <string.h>
