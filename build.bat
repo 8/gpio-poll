@@ -3,6 +3,8 @@
 @echo ****************
 @arm-linux-gnueabihf-g++.exe *.c -o gpio-poll
 
+@IF %ERRORLEVEL% NEQ 0 EXIT %ERRORLEVEL%
+
 @echo *****************
 @echo *** Deploying ***
 @echo *****************
