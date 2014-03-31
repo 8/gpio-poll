@@ -20,6 +20,8 @@ struct settings_t {
   int gpio_count;
   int gpio_states[MAX_GPIO_COUNT];
   char gpio_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
+  char gpio_edge_filenames[MAX_GPIO_COUNT][MAX_FILENAME_LENGTH];
+  int gpio_edge_values[MAX_GPIO_COUNT];
   int loop;
   int poll;
   int poll_timeout;
@@ -109,7 +111,7 @@ static int read_gpio(const char *path, int* value)
     fclose(file);
   }
   else
-    return 0;
+    ret = 0;
 
   return ret;
 }
@@ -190,6 +192,77 @@ static void enter_read_gpios_loop(int base, int count, int states[MAX_GPIO_COUNT
   }
 }
 
+static void init_gpio_edges(int basegpio, int gpiocount, char edges[][MAX_FILENAME_LENGTH])
+{
+  int i;
+  memset(edges, 0, 255*gpiocount);
+  for (i = 0; i < gpiocount; i++)
+    snprintf(edges[i], 254, "/sys/class/gpio/gpio%i/edge", i+basegpio);
+}
+
+typedef enum {
+  gpio_edge_none = 0, 
+  gpio_edge_falling, 
+  gpio_edge_rising, 
+  gpio_edge_both
+} gpio_edge_t;
+
+/* returns 1 if the edge was read successfully, otherwise 0 */
+static int read_edge(const char *path, int *value)
+{
+  FILE *file;
+  char buffer[32];
+  int ret = 0;
+
+  file = fopen(path, "r");
+  if (file != NULL)
+  {
+    if (ret = fread(buffer, 1, sizeof(buffer), file))
+    {
+      ret = 1;
+
+      if (strncmp("none", buffer, 4) == 0)
+        *value = gpio_edge_none;
+      else if (strncmp("falling", buffer, 7) == 0)
+        *value = gpio_edge_falling;
+      else if(strncmp("rising", buffer, 6) == 0)
+        *value = gpio_edge_rising;
+      else if (strncmp("both", buffer, 4) == 0)
+        *value = gpio_edge_both;
+      else
+      {
+        *value = gpio_edge_none;
+        ret = 0;
+      }
+    }
+    fclose(file);
+  }
+  return ret;
+}
+
+static int read_edges(int count, int edges[MAX_GPIO_COUNT], char filenames[][MAX_FILENAME_LENGTH])
+{
+  int i, value, ret;
+
+  memset(edges, 0, sizeof(edges));
+
+  ret = 1;
+
+  for (i = 0; i < count; i++)
+    if (read_edge(filenames[i], &value))
+    {
+      edges[i] = value;
+    }
+    else
+    {
+      printf("reading edge '%s' from gpio failed\n", filenames[i] );
+      ret = 0;
+      break;
+    }
+    
+  return ret;
+}
+
 /* waits for changes in the supplied gpios by using the poll() function
    works only for gpios that support interrupts but does not put a load on the cpu
    timeout: in ms, 0 returns immediately, -1 blocks forever
@@ -267,6 +340,32 @@ static void enter_poll_gpios(int base, int count, int timeout, int states[MAX_GP
 
 }
 
+static int validate_edges(int base, int count, int edges[MAX_GPIO_COUNT])
+{
+  int i, ret;
+
+  ret = 1;
+
+  for (i = 0; i < count && ret == 1; i++)
+  {
+    printf("edge of gpio %i is '", base + i);
+    switch (edges[i])
+    {
+      case gpio_edge_none: printf("none"); ret = 0; break;
+      case gpio_edge_falling: printf("falling"); break;
+      case gpio_edge_rising: printf("rising"); break;
+      case gpio_edge_both: printf("both"); break;
+      default: printf("unknown"); ret = 0; break;
+    }
+    printf (" (%i)'\n", edges[i]);
+  }
+
+  if (ret == 0)
+    printf("polling won't work! consider changing the edge to rising/falling/both\n");
+
+  return ret;
+}
+
 /* main entry point */
 int main(int argc, char *argv[])
 {
@@ -302,6 +401,11 @@ int main(int argc, char *argv[])
 
   /* poll the gpios once */
   if (settings.poll)
-    enter_poll_gpios(settings.gpio_base, settings.gpio_count, settings.poll_timeout, settings.gpio_states, settings.gpio_filenames);
+  {
+    init_gpio_edges(settings.gpio_base, settings.gpio_count, settings.gpio_edge_filenames);
+    if (read_edges(settings.gpio_count, settings.gpio_edge_values, settings.gpio_edge_filenames))
+      if (validate_edges(settings.gpio_base, settings.gpio_count, settings.gpio_edge_values))
+        enter_poll_gpios(settings.gpio_base, settings.gpio_count, settings.poll_timeout, settings.gpio_states, settings.gpio_filenames);
+  }
 }
 
