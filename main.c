@@ -115,7 +115,7 @@ static int read_gpio(const char *path, int* value)
 }
 
 /* initializes the filenames based supplied values */
-static void init_gpios(int basegpio, int gpiocount, char filenames[][MAX_FILENAME_LENGTH])
+static void init_gpio_filenames(int basegpio, int gpiocount, char filenames[][MAX_FILENAME_LENGTH])
 {
   int i;
   /* initialize the gpio names */
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
   handle_parameters(argc, argv, &settings);
 
   /* initialize the gpio file names */
-  init_gpios(settings.gpio_base, settings.gpio_count, settings.gpio_filenames);
+  init_gpio_filenames(settings.gpio_base, settings.gpio_count, settings.gpio_filenames);
 
   /* read the gpios */
   read_gpios(settings.gpio_count, settings.gpio_states, settings.gpio_filenames);
