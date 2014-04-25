@@ -4,7 +4,7 @@
   written by mdk
 */
 #include <stdio.h>
-#include <iostream>
+#include <unistd.h>
 #include <string.h>
 #include <getopt.h>  /* for getopt_long*/
 #include <stdlib.h>  /* for atoi() */
@@ -42,7 +42,7 @@ static void print_usage()
   printf("e.g.: echo both > /sys/class/gpio/gpio8/edge\n");
 }
 
-static void handle_parameters(int argc, char** argv, settings_t *settings)
+static void handle_parameters(int argc, char** argv, struct settings_t *settings)
 {
   int c = -1;
 
