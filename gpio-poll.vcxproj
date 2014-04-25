@@ -16,6 +16,7 @@
   <ItemGroup>
     <None Include="build.bat" />
     <None Include="deploy.bat" />
+    <None Include="Makefile" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{BDB4EEC0-65A8-4ADD-8BC3-215195BE6608}</ProjectGuid>

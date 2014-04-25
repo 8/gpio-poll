@@ -26,5 +26,6 @@
     <None Include="deploy.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="Makefile" />
   </ItemGroup>
 </Project>
