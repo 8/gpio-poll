@@ -1,0 +1,3 @@
+Simple C command line tool to poll gpios
+
+Example usage: ./gpio-poll --base=55 --count=16 --poll
